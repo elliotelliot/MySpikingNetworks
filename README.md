@@ -1,6 +1,6 @@
 # MySpikingNetworks
 
-Repository with Spike \(from github.com/nasiryahm/Spike\) included as a submodule, for easy creation of new spiking networks without editing main Spike code, and use of Niels\'s method for calling connectivity data \(see github.com/nielsleadholm/PolyNetwork_CppTools for basis\)
+Repository with Spike \(from https://github.com/nasiryahm/Spike\) included as a submodule, for easy creation of new spiking networks without editing main Spike code, and use of Niels\'s method for calling connectivity data \(see https://github.com/nielsleadholm/PolyNetwork_CppTools for basis\)
 
 
 **To clone:**
@@ -11,6 +11,7 @@ Repository with Spike \(from github.com/nasiryahm/Spike\) included as a submodul
 **To compile:**
 
 >cmake ./
+
 >make -j8
 
 
@@ -19,7 +20,9 @@ Repository with Spike \(from github.com/nasiryahm/Spike\) included as a submodul
 *Cleanup:*
 
 >rm \*.bin
+
 >rm \*SpikeTimes.txt
+
 >rm \*SpikeIDs.txt
 
 *Run:*
