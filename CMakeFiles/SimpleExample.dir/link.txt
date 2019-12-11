@@ -1,0 +1,1 @@
+/Library/Developer/CommandLineTools/usr/bin/c++   -Wl,-search_paths_first -Wl,-headerpad_max_install_names  CMakeFiles/SimpleExample.dir/SimpleExample.cpp.o  -o SimpleExample -Wl,-rpath,/Users/localelly/GitHub_repos/MySpikingNetworks/Spike/Build/Spike Spike/Build/Spike/libSpike.dylib /usr/local/cuda/lib/libcudart_static.a -Wl,-rpath,/usr/local/cuda/lib 

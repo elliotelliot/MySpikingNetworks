@@ -18,7 +18,9 @@ include_directories(BEFORE SYSTEM "${CMAKE_CURRENT_BINARY_DIR}/Spike")
 
 # Add List of Executables
 foreach(model
-	BinaryNetwork
+	SimpleExample
+	SimpleNetwork
+	PropagationExperiment
     )
   add_executable(${model} ${model}.cpp)
   target_link_libraries(${model} Spike

@@ -1,0 +1,12 @@
+/Users/localelly/GitHub_repos/MySpikingNetworks/CMakeFiles/PropagationExperiment.dir
+/Users/localelly/GitHub_repos/MySpikingNetworks/CMakeFiles/rebuild_cache.dir
+/Users/localelly/GitHub_repos/MySpikingNetworks/CMakeFiles/edit_cache.dir
+/Users/localelly/GitHub_repos/MySpikingNetworks/CMakeFiles/SimpleNetwork.dir
+/Users/localelly/GitHub_repos/MySpikingNetworks/CMakeFiles/SimpleExample.dir
+/Users/localelly/GitHub_repos/MySpikingNetworks/Spike/Build/CMakeFiles/rebuild_cache.dir
+/Users/localelly/GitHub_repos/MySpikingNetworks/Spike/Build/CMakeFiles/edit_cache.dir
+/Users/localelly/GitHub_repos/MySpikingNetworks/Spike/Build/Spike/CMakeFiles/rebuild_cache.dir
+/Users/localelly/GitHub_repos/MySpikingNetworks/Spike/Build/Spike/CMakeFiles/edit_cache.dir
+/Users/localelly/GitHub_repos/MySpikingNetworks/Spike/Build/Spike/CMakeFiles/SpikeCUDA.dir
+/Users/localelly/GitHub_repos/MySpikingNetworks/Spike/Build/Spike/CMakeFiles/Spike.dir
+/Users/localelly/GitHub_repos/MySpikingNetworks/Spike/Build/Spike/CMakeFiles/SpikeDummy.dir
