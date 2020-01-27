@@ -1,0 +1,1 @@
+/usr/bin/c++      CMakeFiles/BaseExperiment.dir/BaseExperiment.cpp.o  -o BaseExperiment -rdynamic Spike/Build/Spike/libSpike.so -Wl,-Bstatic -lcudart_static -Wl,-Bdynamic -lpthread -ldl -lrt -Wl,-rpath,/home/dev/Documents/Elliot/MySpikingNetworks/Spike/Build/Spike 

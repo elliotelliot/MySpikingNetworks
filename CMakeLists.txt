@@ -21,6 +21,7 @@ foreach(model
 	SimpleExample
 	SimpleNetwork
 	PropagationExperiment
+	BaseExperiment
     )
   add_executable(${model} ${model}.cpp)
   target_link_libraries(${model} Spike
