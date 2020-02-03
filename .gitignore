@@ -1,4 +1,10 @@
+#ignore all hidden files except .gitignore
 .*
 !.gitignore
+
+#ignore the following directories
 CMakeFiles
+
+#ignore the following files
 cmake_install.cmake
+CMakeCache.txt
