@@ -1,1 +1,0 @@
-/usr/bin/c++      CMakeFiles/PropagationExperiment.dir/PropagationExperiment.cpp.o  -o PropagationExperiment -rdynamic Spike/Build/Spike/libSpike.so -Wl,-Bstatic -lcudart_static -Wl,-Bdynamic -lpthread -ldl -lrt -Wl,-rpath,/home/dev/Documents/Elliot/MySpikingNetworks/Spike/Build/Spike 

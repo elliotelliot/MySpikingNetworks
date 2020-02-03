@@ -1,1 +1,0 @@
-/usr/bin/c++      CMakeFiles/SimpleExample.dir/SimpleExample.cpp.o  -o SimpleExample -rdynamic Spike/Build/Spike/libSpike.so -Wl,-Bstatic -lcudart_static -Wl,-Bdynamic -lpthread -ldl -lrt -Wl,-rpath,/home/dev/Documents/Elliot/MySpikingNetworks/Spike/Build/Spike 
