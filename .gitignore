@@ -1,0 +1,4 @@
+.*
+!.gitignore
+CMakeFiles
+cmake_install.cmake
