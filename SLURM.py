@@ -1,7 +1,5 @@
 import os, commands
 
-print "hello world"
-
 def create_shell_script_and_sbatch(shell_file_name, command_for_shell_file, dependency_job_id=-1):
 		
 	f = open(shell_file_name,"w+")
@@ -19,7 +17,7 @@ def create_shell_script_and_sbatch(shell_file_name, command_for_shell_file, depe
 
 
 shell_file_name =  "OP_" + str(0)
-command_for_shell_file = "./PolyNetwork"
+command_for_shell_file = "./Experiments/PolyNetwork"
 
 create_shell_script_and_sbatch(shell_file_name, command_for_shell_file)
 
