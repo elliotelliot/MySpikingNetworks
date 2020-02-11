@@ -111,6 +111,19 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named PolyNetwork
+
+# Build rule for target.
+PolyNetwork: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 PolyNetwork
+.PHONY : PolyNetwork
+
+# fast build rule for target.
+PolyNetwork/fast:
+	$(MAKE) -f CMakeFiles/PolyNetwork.dir/build.make CMakeFiles/PolyNetwork.dir/build
+.PHONY : PolyNetwork/fast
+
+#=============================================================================
 # Target rules for targets named SimpleExample
 
 # Build rule for target.
@@ -122,19 +135,6 @@ SimpleExample: cmake_check_build_system
 SimpleExample/fast:
 	$(MAKE) -f CMakeFiles/SimpleExample.dir/build.make CMakeFiles/SimpleExample.dir/build
 .PHONY : SimpleExample/fast
-
-#=============================================================================
-# Target rules for targets named BaseExperiment
-
-# Build rule for target.
-BaseExperiment: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 BaseExperiment
-.PHONY : BaseExperiment
-
-# fast build rule for target.
-BaseExperiment/fast:
-	$(MAKE) -f CMakeFiles/BaseExperiment.dir/build.make CMakeFiles/BaseExperiment.dir/build
-.PHONY : BaseExperiment/fast
 
 #=============================================================================
 # Target rules for targets named SimpleNetwork
@@ -161,6 +161,19 @@ PropagationExperiment: cmake_check_build_system
 PropagationExperiment/fast:
 	$(MAKE) -f CMakeFiles/PropagationExperiment.dir/build.make CMakeFiles/PropagationExperiment.dir/build
 .PHONY : PropagationExperiment/fast
+
+#=============================================================================
+# Target rules for targets named BinaryNetwork
+
+# Build rule for target.
+BinaryNetwork: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 BinaryNetwork
+.PHONY : BinaryNetwork
+
+# fast build rule for target.
+BinaryNetwork/fast:
+	$(MAKE) -f CMakeFiles/BinaryNetwork.dir/build.make CMakeFiles/BinaryNetwork.dir/build
+.PHONY : BinaryNetwork/fast
 
 #=============================================================================
 # Target rules for targets named SpikeDummy
@@ -201,32 +214,59 @@ SpikeCUDA/fast:
 	$(MAKE) -f Spike/Build/Spike/CMakeFiles/SpikeCUDA.dir/build.make Spike/Build/Spike/CMakeFiles/SpikeCUDA.dir/build
 .PHONY : SpikeCUDA/fast
 
-BaseExperiment.o: BaseExperiment.cpp.o
+BinaryNetwork.o: BinaryNetwork.cpp.o
 
-.PHONY : BaseExperiment.o
+.PHONY : BinaryNetwork.o
 
 # target to build an object file
-BaseExperiment.cpp.o:
-	$(MAKE) -f CMakeFiles/BaseExperiment.dir/build.make CMakeFiles/BaseExperiment.dir/BaseExperiment.cpp.o
-.PHONY : BaseExperiment.cpp.o
+BinaryNetwork.cpp.o:
+	$(MAKE) -f CMakeFiles/BinaryNetwork.dir/build.make CMakeFiles/BinaryNetwork.dir/BinaryNetwork.cpp.o
+.PHONY : BinaryNetwork.cpp.o
 
-BaseExperiment.i: BaseExperiment.cpp.i
+BinaryNetwork.i: BinaryNetwork.cpp.i
 
-.PHONY : BaseExperiment.i
+.PHONY : BinaryNetwork.i
 
 # target to preprocess a source file
-BaseExperiment.cpp.i:
-	$(MAKE) -f CMakeFiles/BaseExperiment.dir/build.make CMakeFiles/BaseExperiment.dir/BaseExperiment.cpp.i
-.PHONY : BaseExperiment.cpp.i
+BinaryNetwork.cpp.i:
+	$(MAKE) -f CMakeFiles/BinaryNetwork.dir/build.make CMakeFiles/BinaryNetwork.dir/BinaryNetwork.cpp.i
+.PHONY : BinaryNetwork.cpp.i
 
-BaseExperiment.s: BaseExperiment.cpp.s
+BinaryNetwork.s: BinaryNetwork.cpp.s
 
-.PHONY : BaseExperiment.s
+.PHONY : BinaryNetwork.s
 
 # target to generate assembly for a file
-BaseExperiment.cpp.s:
-	$(MAKE) -f CMakeFiles/BaseExperiment.dir/build.make CMakeFiles/BaseExperiment.dir/BaseExperiment.cpp.s
-.PHONY : BaseExperiment.cpp.s
+BinaryNetwork.cpp.s:
+	$(MAKE) -f CMakeFiles/BinaryNetwork.dir/build.make CMakeFiles/BinaryNetwork.dir/BinaryNetwork.cpp.s
+.PHONY : BinaryNetwork.cpp.s
+
+PolyNetwork.o: PolyNetwork.cpp.o
+
+.PHONY : PolyNetwork.o
+
+# target to build an object file
+PolyNetwork.cpp.o:
+	$(MAKE) -f CMakeFiles/PolyNetwork.dir/build.make CMakeFiles/PolyNetwork.dir/PolyNetwork.cpp.o
+.PHONY : PolyNetwork.cpp.o
+
+PolyNetwork.i: PolyNetwork.cpp.i
+
+.PHONY : PolyNetwork.i
+
+# target to preprocess a source file
+PolyNetwork.cpp.i:
+	$(MAKE) -f CMakeFiles/PolyNetwork.dir/build.make CMakeFiles/PolyNetwork.dir/PolyNetwork.cpp.i
+.PHONY : PolyNetwork.cpp.i
+
+PolyNetwork.s: PolyNetwork.cpp.s
+
+.PHONY : PolyNetwork.s
+
+# target to generate assembly for a file
+PolyNetwork.cpp.s:
+	$(MAKE) -f CMakeFiles/PolyNetwork.dir/build.make CMakeFiles/PolyNetwork.dir/PolyNetwork.cpp.s
+.PHONY : PolyNetwork.cpp.s
 
 PropagationExperiment.o: PropagationExperiment.cpp.o
 
@@ -317,16 +357,20 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... PolyNetwork"
 	@echo "... SimpleExample"
-	@echo "... BaseExperiment"
 	@echo "... SimpleNetwork"
 	@echo "... PropagationExperiment"
+	@echo "... BinaryNetwork"
 	@echo "... SpikeDummy"
 	@echo "... Spike"
 	@echo "... SpikeCUDA"
-	@echo "... BaseExperiment.o"
-	@echo "... BaseExperiment.i"
-	@echo "... BaseExperiment.s"
+	@echo "... BinaryNetwork.o"
+	@echo "... BinaryNetwork.i"
+	@echo "... BinaryNetwork.s"
+	@echo "... PolyNetwork.o"
+	@echo "... PolyNetwork.i"
+	@echo "... PolyNetwork.s"
 	@echo "... PropagationExperiment.o"
 	@echo "... PropagationExperiment.i"
 	@echo "... PropagationExperiment.s"

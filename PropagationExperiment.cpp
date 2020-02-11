@@ -95,11 +95,11 @@ int main (int argc, char *argv[]){
     inhibitory_population_params->somatic_leakage_conductance_g0 = 18.0*pow(10, -9);
     
     // Create populations of excitatory and inhibitory neurons
-    int n_layers = 4; //number of layers (not including input layer)
+    int n_layers = 4; //number of layers (not including input layer) 
     vector<int> ex_layer_IDs(n_layers, 0);
     vector<int> inh_layer_IDs(n_layers, 0);
 
-    for (int i=0; i<(n_layers); i++){
+    for (int i=0; i<(n_layers+1); i++){
         ex_layer_IDs[i] = PropagationExperiment->AddNeuronGroup(excitatory_population_params);
         std::cout << "New ex layer ID is " << ex_layer_IDs[i] << "\n";
         inh_layer_IDs[i] = PropagationExperiment->AddNeuronGroup(inhibitory_population_params);

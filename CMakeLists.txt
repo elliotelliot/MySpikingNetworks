@@ -21,6 +21,7 @@ foreach(model
 	SimpleExample
 	SimpleNetwork
 	PropagationExperiment
+	BinaryNetwork
 	PolyNetwork
     )
   add_executable(${model} ${model}.cpp)
