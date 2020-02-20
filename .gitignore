@@ -9,7 +9,14 @@ CMakeFiles
 cmake_install.cmake
 CMakeCache.txt
 Makefile
+<<<<<<< HEAD
 OP_0
 
 #ignore files starting with
 slurm-*
+=======
+
+#ignore files starting with the following
+slurm*
+OP*
+>>>>>>> 862fcec802db4807b313c1fd51cca9e75b3979cf
