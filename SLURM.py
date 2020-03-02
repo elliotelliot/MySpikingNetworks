@@ -17,7 +17,7 @@ def create_shell_script_and_sbatch(shell_file_name, command_for_shell_file, depe
 
 
 shell_file_name =  "OP_" + str(0)
-command_for_shell_file = "./Experiments/PolyNetwork"
+command_for_shell_file = "./PolyNetwork"
 
 create_shell_script_and_sbatch(shell_file_name, command_for_shell_file)
 
