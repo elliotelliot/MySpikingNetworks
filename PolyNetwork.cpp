@@ -46,6 +46,8 @@ PolyNetwork is adapted from Niels' BinaryNetwork, but with a single stream. It i
       -->TAKE CARE NOT TO TURN INHIBITORY SYNAPSES INTO EXCITATORY ONES (OR VICE VERSA)!! !!
 
   Plasticity
+    Custom STDP plasticity rule
+
 
 
 */
@@ -112,33 +114,49 @@ int main (int argc, char *argv[]){
   
   //EXCITATORY SYNAPTIC DYNAMICS
   float ex_weight_min = 0.005; float ex_weight_max = 0.015; //initial weights min/max - follows uniform dist
-  float ex_weight_scaling_constant = ex_somatic_leakage_conductance;
-  float ex_decay_term = 0.0017f; //tau_g
-  float ex_reversal_potential = 0.0*pow(10.0, -3); //v_hat
+  conductance_spiking_synapse_parameters_struct * ex_synapse_params_vec = new conductance_spiking_synapse_parameters_struct();  //create excitatory synapses parameter structure
+  ex_synapse_params_vec->decay_term_tau_g = 0.0017f;  //conductance parameter (seconds)
+  ex_synapse_params_vec->reversal_potential_Vhat = 0.0*pow(10.0, -3); //v_hat
+  ex_synapse_params_vec->weight_scaling_constant = ex_somatic_leakage_conductance;
 
   //INHIBITORY SYNAPTIC DYNAMICS
   float inh_weight_min = 0.005; float inh_weight_max = 0.015; //initial weights min/max - follows uniform dist
-  float inh_weight_scaling_constant = ex_somatic_leakage_conductance;
-  float inh_decay_term = 0.0017f; //tau_g
-  float inh_reversal_potential = -80.0*pow(10.0, -3); //v_hat
+  conductance_spiking_synapse_parameters_struct * inh_synapse_params_vec = new conductance_spiking_synapse_parameters_struct();
+  inh_synapse_params_vec->decay_term_tau_g = 0.0017f; //conductance parameter (seconds)
+  inh_synapse_params_vec->reversal_potential_Vhat = -80.0*pow(10.0, -3); //v_hat
+  inh_synapse_params_vec->weight_scaling_constant = ex_somatic_leakage_conductance*5.0; //inhibitory weights scaled to be greater than excitatory weights
 
   //EXCITATORY PLASTICITY
-  custom_stdp_plasticity_parameters_struct * Excit_STDP_PARAMS = new custom_stdp_plasticity_parameters_struct;
-  Excit_STDP_PARAMS->a_plus = 1.0f; //Set to the mean of the excitatory weight distribution
-  Excit_STDP_PARAMS->a_minus = 1.0f;
-  Excit_STDP_PARAMS->weight_dependence_power_ltd = 0.0f; //By setting this to 0, the STDP rule has *no* LTD weight dependence, and hence behaves like the classical Gerstner rule
-  Excit_STDP_PARAMS->w_max = 0.03; //Sets the maximum weight that can be *learned* (hard border)
-  Excit_STDP_PARAMS->tau_plus = 0.01f;
-  Excit_STDP_PARAMS->tau_minus = 0.01f;
-  Excit_STDP_PARAMS->learning_rate = 0.001f;
-  Excit_STDP_PARAMS->a_star = 0; //Excit_STDP_PARAMS->a_plus * Excit_STDP_PARAMS->tau_minus * Inhib_STDP_PARAMS->targetrate;
-
+  bool input_learning = 1; //is input -> first layer stdp on? 1=yes, 0=no
+  bool background_learning = 0; //is background -> all main layers stdp on? 1=yes, 0=no
+  bool ff_learning = 1; //is feed-forward stdp on? 1=yes, 0=no
+  bool fb_learning = 1; //is feedback stdp on? 1=yes, 0=no
+  bool lat_learning = 1; //is lateral excitatory stdp on? 1=yes, 0=no
+  bool ex_to_inh_learning = 0; //is excitatory -> inhibitory stdp on? 1=yes, 0=no
+  custom_stdp_plasticity_parameters_struct * ex_stdp_params = new custom_stdp_plasticity_parameters_struct(); //create excitatory stdp parameter structure
+  ex_stdp_params->a_plus = 1.0f; //set to the mean of the excitatory weight distribution
+  ex_stdp_params->a_minus = 1.0f;
+  ex_stdp_params->weight_dependence_power_ltd = 0.0f; //by setting this to 0, the STDP rule has *no* LTD weight dependence, and hence behaves like the classical Gerstner rule
+  ex_stdp_params->w_max = 0.03; //sets the maximum weight that can be *learned* (hard border)
+  ex_stdp_params->tau_plus = 0.01f;
+  ex_stdp_params->tau_minus = 0.01f;
+  ex_stdp_params->learning_rate = 0.001f;
+  ex_stdp_params->a_star = 0; //ex_stdp_params->a_plus * ex_stdp_params->tau_minus * Inhib_STDP_PARAMS->targetrate;
 
   //INHIBITORY PLASTICITY
-  //currently none
-
-
+  bool inh_learning = 1; //is lateral inhibitory -> excitatory stdp on? 1=yes, 0=no
+  custom_stdp_plasticity_parameters_struct * inh_stdp_params = new custom_stdp_plasticity_parameters_struct(); //create inhibitory stdp parameter structure
+  inh_stdp_params->a_plus = 1.0f; //set to the mean of the inhibitory weight distribution
+  inh_stdp_params->a_minus = 1.0f;
+  inh_stdp_params->weight_dependence_power_ltd = 0.0f; //by setting this to 0, the STDP rule has *no* LTD weight dependence, and hence behaves like the classical Gerstner rule
+  inh_stdp_params->w_max = 0.03; //sets the maximum weight that can be *learned* (hard border)
+  inh_stdp_params->tau_plus = 0.01f;
+  inh_stdp_params->tau_minus = 0.01f;
+  inh_stdp_params->learning_rate = 0.001f;
+  inh_stdp_params->a_star = 0; //ex_stdp_params->a_plus * ex_stdp_params->tau_minus * Inhib_STDP_PARAMS->targetrate;
   
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   ///////////////////////////
   // SET UP NEURON GROUPS ///
@@ -228,14 +246,14 @@ int main (int argc, char *argv[]){
   ConductanceSpikingSynapses * conductance_spiking_synapses = new ConductanceSpikingSynapses();
   PolyNetwork->spiking_synapses = conductance_spiking_synapses;
 
-  //create excitatory parameter structure
-  conductance_spiking_synapse_parameters_struct * ex_synapse_params_vec = new conductance_spiking_synapse_parameters_struct();
-  ex_synapse_params_vec->weight_scaling_constant = ex_weight_scaling_constant;
+  //finish excitatory parameter structure
   ex_synapse_params_vec->delay_range[0] = 10.0*timestep;
   ex_synapse_params_vec->delay_range[1] = 10.0*timestep; //NB that as the delays will be set later, these values are arbitrary, albeit required by Spike
-  ex_synapse_params_vec->decay_term_tau_g = ex_decay_term;  // Seconds (Conductance Parameter)
-  ex_synapse_params_vec->reversal_potential_Vhat = ex_reversal_potential;
   ex_synapse_params_vec->connectivity_type = CONNECTIVITY_TYPE_PAIRWISE;
+
+  //assign plasticity rule
+  CustomSTDPPlasticity * excitatory_stdp = new CustomSTDPPlasticity((SpikingSynapses *) conductance_spiking_synapses, (SpikingNeurons *) lif_spiking_neurons, (SpikingNeurons *) patterned_poisson_input_neurons, (stdp_plasticity_parameters_struct *) ex_stdp_params);  
+  PolyNetwork->AddPlasticityRule(excitatory_stdp);
 
   //initialise vectors
   std::vector<int> pre_layer_IDs;
@@ -244,6 +262,7 @@ int main (int argc, char *argv[]){
   std::vector<float> delay_means;
   std::vector<float> delay_stds;
   std::vector<int> mult_synapses;
+  std::vector<bool> learning;
   
   //input to first layer
   pre_layer_IDs.push_back(input_layer_ID);
@@ -252,6 +271,7 @@ int main (int argc, char *argv[]){
   delay_means.push_back(ff_delay_mean);
   delay_stds.push_back(ff_delay_std);
   mult_synapses.push_back(ff_mult_synapses);
+  learning.push_back(input_learning);
 
   //background to all layers
   for (int i=0; i<n_ex_layers; i++){
@@ -261,6 +281,7 @@ int main (int argc, char *argv[]){
     delay_means.push_back(ff_delay_mean);
     delay_stds.push_back(ff_delay_std);
     mult_synapses.push_back(ff_mult_synapses);
+    learning.push_back(background_learning);
   }
 
   //feed-forward
@@ -271,6 +292,7 @@ int main (int argc, char *argv[]){
     delay_means.push_back(ff_delay_mean);
     delay_stds.push_back(ff_delay_std);
     mult_synapses.push_back(ff_mult_synapses);
+    learning.push_back(ff_learning);
   }
 
   //feed-back
@@ -281,6 +303,7 @@ int main (int argc, char *argv[]){
     delay_means.push_back(fb_delay_mean);
     delay_stds.push_back(fb_delay_std);
     mult_synapses.push_back(fb_mult_synapses);
+    learning.push_back(fb_learning);
   }
 
   //lateral - excitatory to excitatory
@@ -291,6 +314,7 @@ int main (int argc, char *argv[]){
     delay_means.push_back(lat_delay_mean);
     delay_stds.push_back(lat_delay_std);
     mult_synapses.push_back(lat_mult_synapses);
+    learning.push_back(lat_learning);
   }
 
   //lateral - excitatory to inhibitory
@@ -302,6 +326,7 @@ int main (int argc, char *argv[]){
       delay_means.push_back(lat_delay_mean);
       delay_stds.push_back(lat_delay_std);
       mult_synapses.push_back(lat_mult_synapses);
+      learning.push_back(ex_to_inh_learning);
     }
   }
   
@@ -353,6 +378,15 @@ int main (int argc, char *argv[]){
     //print sanity check
     std::cout << "Layer ID " << std::to_string(pre_layer_IDs[i]) << " is sending " << std::to_string(n_synapses) << " synapses to layer ID " << std::to_string(post_layer_IDs[i]) << "\n";
 
+    //turn on learning if it ought to be
+    if (learning[i]){
+      ex_synapse_params_vec->plasticity_vec.push_back(excitatory_stdp);
+      std::cout << "Learning on\n";
+    } else {
+      std::cout << "Learning off\n";
+    }
+
+
     //add synapse group
     PolyNetwork->AddSynapseGroup(pre_layer_IDs[i], post_layer_IDs[i], ex_synapse_params_vec);
 
@@ -361,11 +395,8 @@ int main (int argc, char *argv[]){
     ex_synapse_params_vec->pairwise_connect_postsynaptic.clear();
     ex_synapse_params_vec->pairwise_connect_weight.clear();
     ex_synapse_params_vec->pairwise_connect_delay.clear();
+    ex_synapse_params_vec->plasticity_vec.clear();
   }
-
-  //assign plasticity rule
-  CustomSTDPPlasticity * excitatory_stdp = new CustomSTDPPlasticity((SpikingSynapses *) conductance_spiking_synapses, (SpikingNeurons *) lif_spiking_neurons, (SpikingNeurons *) patterned_poisson_input_neurons, (stdp_plasticity_parameters_struct *) Excit_STDP_PARAMS);  
-  PolyNetwork->AddPlasticityRule(excitatory_stdp);
   
 
   /////////////////////////////////
@@ -376,13 +407,9 @@ int main (int argc, char *argv[]){
 
     std::cout << "\n\n.......\nSetting up inhibitory synapses...\n.......\n\n";
 
-    //create inhibitory parameter structure
-    conductance_spiking_synapse_parameters_struct * inh_synapse_params_vec = new conductance_spiking_synapse_parameters_struct();
-    inh_synapse_params_vec->weight_scaling_constant = inh_weight_scaling_constant;
+    //finish inhibitory parameter structure
     inh_synapse_params_vec->delay_range[0] = 10.0*timestep;
     inh_synapse_params_vec->delay_range[1] = 10.0*timestep; //NB that as the delays will be set later, these values are arbitrary, albeit required by Spike
-    inh_synapse_params_vec->decay_term_tau_g = inh_decay_term;  // Seconds (Conductance Parameter)
-    inh_synapse_params_vec->reversal_potential_Vhat = inh_reversal_potential;
     inh_synapse_params_vec->connectivity_type = CONNECTIVITY_TYPE_PAIRWISE;
 
     //prepare delay distribution
@@ -393,6 +420,9 @@ int main (int argc, char *argv[]){
     //prepare weight distribution
     std::uniform_real_distribution<double> inh_weight_distribution(inh_weight_min, inh_weight_max);
 
+    //assign plasticity rule
+    CustomSTDPPlasticity * inhibitory_stdp = new CustomSTDPPlasticity((SpikingSynapses *) conductance_spiking_synapses, (SpikingNeurons *) lif_spiking_neurons, (SpikingNeurons *) patterned_poisson_input_neurons, (stdp_plasticity_parameters_struct *) inh_stdp_params);  
+    PolyNetwork->AddPlasticityRule(inhibitory_stdp);
 
     for (int i = 0; i < n_ex_layers; i++){
 
@@ -410,7 +440,7 @@ int main (int argc, char *argv[]){
       }
     
       //calculate number of synapses
-      int n_synapses = ex_synapse_params_vec->pairwise_connect_presynaptic.size();
+      int n_synapses = inh_synapse_params_vec->pairwise_connect_presynaptic.size();
 
       //randomise delays
       for (int j = 0; j <n_synapses; j++){
@@ -424,6 +454,14 @@ int main (int argc, char *argv[]){
 
       //print sanity check
       std::cout << "Layer ID " << std::to_string(inh_layer_IDs[i]) << " is sending " << std::to_string(n_synapses) << " synapses to layer ID " << std::to_string(ex_layer_IDs[i]) << "\n";
+
+      //turn on learning if it ought to be
+      if (inh_learning){
+        inh_synapse_params_vec->plasticity_vec.push_back(inhibitory_stdp);
+        std::cout << "Learning on\n";
+      } else {
+        std::cout << "Learning off\n";
+      }
 
       //add synapse group
       PolyNetwork->AddSynapseGroup(inh_layer_IDs[i], ex_layer_IDs[i], inh_synapse_params_vec);
