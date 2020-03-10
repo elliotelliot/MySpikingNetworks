@@ -101,7 +101,7 @@ int main (int argc, char *argv[]){
   //Feedback
   int fb_mult_synapses = 4; //number of synapses per excitatory connection
   float fb_delay_mean = 3.4f; float fb_delay_std = 2.3f; //mean/std axonal delay - follows lognorm dist
-  int prob_fb_connection = 0; //probability of a feedback connection between any neuron pair in adjacent layers
+  int prob_fb_connection = 1; //probability of a feedback connection between any neuron pair in adjacent layers
   //Lateral excitatory
   int lat_mult_synapses = 4; //number of synapses per excitatory connection
   float lat_delay_mean = 3.4f; float lat_delay_std = 2.3f; //mean/std axonal delay - follows lognorm dist
@@ -132,7 +132,7 @@ int main (int argc, char *argv[]){
   bool ff_learning = 1; //is feed-forward stdp on? 1=yes, 0=no
   bool fb_learning = 1; //is feedback stdp on? 1=yes, 0=no
   bool lat_learning = 1; //is lateral excitatory stdp on? 1=yes, 0=no
-  bool ex_to_inh_learning = 0; //is excitatory -> inhibitory stdp on? 1=yes, 0=no
+  bool ex_to_inh_learning = 1; //is excitatory -> inhibitory stdp on? 1=yes, 0=no
   custom_stdp_plasticity_parameters_struct * ex_stdp_params = new custom_stdp_plasticity_parameters_struct(); //create excitatory stdp parameter structure
   ex_stdp_params->a_plus = 1.0f; //set to the mean of the excitatory weight distribution
   ex_stdp_params->a_minus = 1.0f;
@@ -332,7 +332,8 @@ int main (int argc, char *argv[]){
   
   //prepare random number generator
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-  std::default_random_engine generator (seed);
+  std::default_random_engine generator(seed);
+  int maximum_value_rand = generator.max();
 
   //prepare weight distribution
   std::uniform_real_distribution<double> weight_distribution(ex_weight_min, ex_weight_max);
@@ -347,8 +348,8 @@ int main (int argc, char *argv[]){
     //choose connections
     for (int j = 0; j < n_neurons_per_layer; j++){ //cycle through pre-synaptic neuron IDs (NB: for the purpose of adding synapses, neurons indexed seperately for each layer, from 0)
       for (int k = 0; k < n_neurons_per_layer; k++){ //cycle through post-synaptic neuron IDs
-        int r = rand(); //pick a random number between 0 and rd.max
-        if (r < RAND_MAX*prob_connection[i]){
+        int r=generator(); //pick a random number between 0 and generator.max
+        if (r < maximum_value_rand*prob_connection[i]){
           if (pre_layer_IDs[i] != post_layer_IDs[i] || j != k){ //make sure not to connect a neuron to itself
           	for (int l = 0; l < mult_synapses[i]; l++){ //iterate through each synapse for this neuron pair
 						  ex_synapse_params_vec->pairwise_connect_presynaptic.push_back(j);
