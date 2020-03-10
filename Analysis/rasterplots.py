@@ -16,5 +16,5 @@ plt.figure(figsize=(12,9))
 #mask = stim1_df["times"] <1.0 #Restrict plotted spikes to a particular time period
 #mask = ((stim1_df["ids"] > 0) & (stim1_df["ids"] <= 1024)) #Restrict plotted spikes to a particular layer
 plt.scatter(df["times"], df["ids"], s=5)
-plt.savefig('raster')
+plt.savefig('Figures/raster')
 plt.close()
