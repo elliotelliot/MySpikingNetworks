@@ -549,8 +549,8 @@ int main (int argc, char *argv[]){
     patterned_poisson_input_neurons->select_stimulus(stimulus);
     PolyNetwork->run(simtime, 1); //the second argument is a boolean determining if STDP is on or off
     PolyNetwork->spiking_synapses->save_weights_as_txt("./Outputs/", "Epoch_" + std::to_string(ii) + "_");
-    spike_monitor_main->save_spikes_as_txt("./Outputs/", "Epoch_" + std::to_string(ii) + "_Output_Training_");
-    spike_monitor_input->save_spikes_as_txt("./Outputs/", "Epoch_" + std::to_string(ii) + "_Input_Training_");
+    spike_monitor_main->save_spikes_as_binary("./Outputs/", "Epoch_" + std::to_string(ii) + "_Output_Training_");
+    spike_monitor_input->save_spikes_as_binary("./Outputs/", "Epoch_" + std::to_string(ii) + "_Input_Training_");
     spike_monitor_main->reset_state(); //Dumps all recorded spikes
     spike_monitor_input->reset_state(); //Dumps all recorded spikes
     PolyNetwork->reset_time(); //Resets the internal clock to 0
@@ -567,8 +567,8 @@ int main (int argc, char *argv[]){
 
     patterned_poisson_input_neurons->select_stimulus(stimulus);
     PolyNetwork->run(simtime, 0); //the second argument is a boolean determining if STDP is on or off
-    spike_monitor_main->save_spikes_as_txt("./Outputs/", "Epoch_" + std::to_string(ii) +  "_Output_Testing_");
-    spike_monitor_input->save_spikes_as_txt("./Outputs/", "Epoch_" + std::to_string(ii) +  "_Input_Testing_");
+    spike_monitor_main->save_spikes_as_binary("./Outputs/", "Epoch_" + std::to_string(ii) +  "_Output_Testing_");
+    spike_monitor_input->save_spikes_as_binary("./Outputs/", "Epoch_" + std::to_string(ii) +  "_Input_Testing_");
     spike_monitor_main->reset_state(); //Dumps all recorded spikes
     spike_monitor_input->reset_state(); //Dumps all recorded spikes
     PolyNetwork->reset_time(); //Resets the internal clock to 0
