@@ -1,14 +1,22 @@
 #include "Spike/Spike.hpp"
-#include "UtilityFunctionsLeadholm.hpp"
+//#include "UtilityFunctionsLeadholm.hpp"
 #include <array>
 #include <iostream>
+#include <fstream>
 #include <cstring>
 #include <string>
 #include <random>
 #include <chrono>
+#include <bits/stdc++.h> 
+#include <sys/stat.h> 
+#include <sys/types.h> 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
+
+//////////////////
+// DESCRIPTION ///
+//////////////////
 
 PolyNetwork is adapted from Niels' BinaryNetwork, but with a single stream. It is set up as follows:
   
@@ -53,18 +61,48 @@ PolyNetwork is adapted from Niels' BinaryNetwork, but with a single stream. It i
 */
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+///////////////////////////
+// INITIAL DECLARATIONS ///
+///////////////////////////
 
-// The function which will autorun when the executable is created
+//DECLARE CONNECTIVIY PARAMETER STRUCTURE
+struct connectivity_struct {
+    int mult_synapses;
+    float delay_mean;
+    float delay_std;
+    float prob_connection;
+    bool learning;
+  } input, background, ff, fb, lat, ex_to_inh, inh_to_ex;
+
+//DECLARE FUNCTION TO CONSTRUCT CONNECTIVITY
+void construct_connectivity(SpikingModel* model, connectivity_struct connectivity, int pre_layer_ID, int post_layer_ID, conductance_spiking_synapse_parameters_struct* synapse_params, CustomSTDPPlasticity* stdp, float weight_min, float weight_max, int n_neurons_per_layer, float timestep);
+
+
+//MAIN FUNCTION
 int main (int argc, char *argv[]){
 
-  // Create an instance of the Model
-  SpikingModel* PolyNetwork = new SpikingModel();
+  //CREATE AN INSTANCE OF THE MODEL
+
+  SpikingModel* PolyNetwork = new SpikingModel(); 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   
   /////////////////
   // PARAMETERS ///
   /////////////////
   
+  //SET UP SPIKE PARAMETER STRUCTURES
+  //only put here what is needed to set parameters for readability/ease of changing them
+  lif_spiking_neuron_parameters_struct * excitatory_population_params = new lif_spiking_neuron_parameters_struct(); //create excitatory neuron parameter structure
+  lif_spiking_neuron_parameters_struct * inhibitory_population_params = new lif_spiking_neuron_parameters_struct(); //create inhibitory neuron parameter structure
+  patterned_poisson_input_spiking_neuron_parameters_struct* input_neuron_params = new patterned_poisson_input_spiking_neuron_parameters_struct();
+  conductance_spiking_synapse_parameters_struct * ex_synapse_params_vec = new conductance_spiking_synapse_parameters_struct();  //create excitatory synapses parameter structure
+  conductance_spiking_synapse_parameters_struct * inh_synapse_params_vec = new conductance_spiking_synapse_parameters_struct(); //create inhibitory synapses parameter structure
+  custom_stdp_plasticity_parameters_struct * ex_stdp_params = new custom_stdp_plasticity_parameters_struct(); //create excitatory stdp parameter structure
+  custom_stdp_plasticity_parameters_struct * inh_stdp_params = new custom_stdp_plasticity_parameters_struct(); //create inhibitory stdp parameter structure
+
   //SIMULATION
+  std::string simulation_name = "PolyNetwork_test"; //output file name ****EDIT NAME HERE
   int training_epochs = 10; // Number of epochs to have STDP active
   int display_epochs = 10; // Number of epochs where the each stimulus is presented with STDP inactive
   float timestep = 0.0001;  // In seconds
@@ -79,61 +117,83 @@ int main (int argc, char *argv[]){
     //NB: If inhibition is on, number of inhibitory layers is equal to number of excitatory layers
 
   //EXCITATORY NEURON DYNAMICS
-  float ex_resting_potential = -0.06f; //v0
-  float ex_absolute_refractory_period = 0.002f;
-  float ex_threshold = -0.05f;
-  float ex_somatic_capacitance = 200.0*pow(10, -12); //Cm
-  float ex_somatic_leakage_conductance = 18.0*pow(10, -9); //g0
+  excitatory_population_params->resting_potential_v0 = -0.06f;
+  excitatory_population_params->absolute_refractory_period = 0.002f;
+  excitatory_population_params->threshold_for_action_potential_spike = -0.05f;
+  excitatory_population_params->somatic_capacitance_Cm = 200.0*pow(10, -12);
+  excitatory_population_params->somatic_leakage_conductance_g0 = 18.0*pow(10, -9);
   
   //INHIBITORY NEURON DYNAMICS
-  float inh_resting_potential = -0.082f; //v0
-  float inh_threshold = -0.053f;
-  float inh_somatic_capacitance = 214.0*pow(10, -12); //Cm
-  float inh_somatic_leakage_conductance = 18.0*pow(10, -9); //g0
+  inhibitory_population_params->resting_potential_v0 = -0.082f;
+  inhibitory_population_params->threshold_for_action_potential_spike = -0.053f;
+  inhibitory_population_params->somatic_capacitance_Cm = 214.0*pow(10, -12);
+  inhibitory_population_params->somatic_leakage_conductance_g0 = 18.0*pow(10, -9);
 
   //CONNECTIVITY
-  //Input/feedforward
-  int ff_mult_synapses = 4; //number of synapses per excitatory connection
-  float ff_delay_mean = 3.4f; float ff_delay_std = 2.3f; //mean/std axonal delay - follows lognorm dist
-  int prob_input_connection = 1; //probability of a connection from any given input neuron to any given excitatory neuron within the first layer
-  int prob_background_connection = 1; //probability of a connection from any given background neuron to any given excitatory neuron within each layer
-  int prob_ff_connection = 1; //probability of a feedforward connection between any neuron pair in adjacent layers
-  //Feedback
-  int fb_mult_synapses = 4; //number of synapses per excitatory connection
-  float fb_delay_mean = 3.4f; float fb_delay_std = 2.3f; //mean/std axonal delay - follows lognorm dist
-  int prob_fb_connection = 1; //probability of a feedback connection between any neuron pair in adjacent layers
-  //Lateral excitatory
-  int lat_mult_synapses = 4; //number of synapses per excitatory connection
-  float lat_delay_mean = 3.4f; float lat_delay_std = 2.3f; //mean/std axonal delay - follows lognorm dist
-  int prob_lat_connection = 1; //probability of a connection between any neuron pair within a layer
-  int prob_ex_to_inh_connection = 1; //probability of a connection from any excitatory neuron to any inhibitory neuron in corresponding layer
-  //Lateral inhibitory
-  int inh_mult_synapses = 4; //number of synapses per excitatory connection
-  float inh_delay_mean = 3.4f; float inh_delay_std = 2.3f; //mean/std axonal delay - follows lognorm dist
-  int prob_inh_to_ex_connection = 1;
+
+  //input to first layer
+  input.mult_synapses = 4;
+  input.delay_mean = 3.4f;
+  input.delay_std = 2.3f;
+  input.prob_connection = 1;
+  input.learning = 1;
+
+  //background to all layers
+  background.mult_synapses = 4;
+  background.delay_mean = 3.4f;
+  background.delay_std = 2.3f;
+  background.prob_connection = 1;
+  background.learning = 0;
+
+  //feed-forward amongst main excitatory layers
+  ff.mult_synapses = 4;
+  ff.delay_mean = 3.4f;
+  ff.delay_std = 2.3f;
+  ff.prob_connection = 1;
+  ff.learning = 1;
+
+  //feed-back amongst main excitatory layers
+  fb.mult_synapses = 4;
+  fb.delay_mean = 3.4f;
+  fb.delay_std = 2.3f;
+  fb.prob_connection = 1;
+  fb.learning = 1;
+
+  //lateral - excitatory to excitatory
+  lat.mult_synapses = 4;
+  lat.delay_mean = 3.4f;
+  lat.delay_std = 2.3f;
+  lat.prob_connection = 1;
+  lat.learning = 1;
+
+  //lateral - excitatory to inhibitory
+  ex_to_inh.mult_synapses = 4;
+  ex_to_inh.delay_mean = 3.4f;
+  ex_to_inh.delay_std = 2.3f;
+  ex_to_inh.prob_connection = 1;
+  ex_to_inh.learning = 1;
+
+  //lateral - inhibitory to excitatory
+  inh_to_ex.mult_synapses = 4;
+  inh_to_ex.delay_mean = 3.4f;
+  inh_to_ex.delay_std = 2.3f;
+  inh_to_ex.prob_connection = 1;
+  inh_to_ex.learning = 1;
+
   
   //EXCITATORY SYNAPTIC DYNAMICS
   float ex_weight_min = 0.005; float ex_weight_max = 0.015; //initial weights min/max - follows uniform dist
-  conductance_spiking_synapse_parameters_struct * ex_synapse_params_vec = new conductance_spiking_synapse_parameters_struct();  //create excitatory synapses parameter structure
   ex_synapse_params_vec->decay_term_tau_g = 0.0017f;  //conductance parameter (seconds)
   ex_synapse_params_vec->reversal_potential_Vhat = 0.0*pow(10.0, -3); //v_hat
-  ex_synapse_params_vec->weight_scaling_constant = ex_somatic_leakage_conductance;
+  ex_synapse_params_vec->weight_scaling_constant = excitatory_population_params->somatic_leakage_conductance_g0;
 
   //INHIBITORY SYNAPTIC DYNAMICS
-  float inh_weight_min = 0.005; float inh_weight_max = 0.015; //initial weights min/max - follows uniform dist
-  conductance_spiking_synapse_parameters_struct * inh_synapse_params_vec = new conductance_spiking_synapse_parameters_struct();
+  float inh_weight_min = ex_weight_min*5; float inh_weight_max = ex_weight_max*5; //initial weights min/max - follows uniform dist
   inh_synapse_params_vec->decay_term_tau_g = 0.0017f; //conductance parameter (seconds)
   inh_synapse_params_vec->reversal_potential_Vhat = -80.0*pow(10.0, -3); //v_hat
-  inh_synapse_params_vec->weight_scaling_constant = ex_somatic_leakage_conductance*5.0; //inhibitory weights scaled to be greater than excitatory weights
+  inh_synapse_params_vec->weight_scaling_constant = excitatory_population_params->somatic_leakage_conductance_g0*5.0; //inhibitory weights scaled to be greater than excitatory weights
 
   //EXCITATORY PLASTICITY
-  bool input_learning = 1; //is input -> first layer stdp on? 1=yes, 0=no
-  bool background_learning = 0; //is background -> all main layers stdp on? 1=yes, 0=no
-  bool ff_learning = 1; //is feed-forward stdp on? 1=yes, 0=no
-  bool fb_learning = 1; //is feedback stdp on? 1=yes, 0=no
-  bool lat_learning = 1; //is lateral excitatory stdp on? 1=yes, 0=no
-  bool ex_to_inh_learning = 1; //is excitatory -> inhibitory stdp on? 1=yes, 0=no
-  custom_stdp_plasticity_parameters_struct * ex_stdp_params = new custom_stdp_plasticity_parameters_struct(); //create excitatory stdp parameter structure
   ex_stdp_params->a_plus = 1.0f; //set to the mean of the excitatory weight distribution
   ex_stdp_params->a_minus = 1.0f;
   ex_stdp_params->weight_dependence_power_ltd = 0.0f; //by setting this to 0, the STDP rule has *no* LTD weight dependence, and hence behaves like the classical Gerstner rule
@@ -144,8 +204,6 @@ int main (int argc, char *argv[]){
   ex_stdp_params->a_star = 0; //ex_stdp_params->a_plus * ex_stdp_params->tau_minus * Inhib_STDP_PARAMS->targetrate;
 
   //INHIBITORY PLASTICITY
-  bool inh_learning = 1; //is lateral inhibitory -> excitatory stdp on? 1=yes, 0=no
-  custom_stdp_plasticity_parameters_struct * inh_stdp_params = new custom_stdp_plasticity_parameters_struct(); //create inhibitory stdp parameter structure
   inh_stdp_params->a_plus = 1.0f; //set to the mean of the inhibitory weight distribution
   inh_stdp_params->a_minus = 1.0f;
   inh_stdp_params->weight_dependence_power_ltd = 0.0f; //by setting this to 0, the STDP rule has *no* LTD weight dependence, and hence behaves like the classical Gerstner rule
@@ -158,14 +216,55 @@ int main (int argc, char *argv[]){
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  ///////////////////////////
+  //////////////////////
+  // SAVE PARAMETERS ///
+  //////////////////////
+
+
+  //CREATE OUTPUT FILES
+
+  std::string output_dir = "./Outputs/" + simulation_name;
+  const char* output_dir_c = output_dir.c_str(); //convert dir to c string - needed to be accepted by mkdir function (linux)
+  int check = mkdir(output_dir_c, 0777); //make file
+  if (check != 0){ //check file could be made - i.e. it doesn't already exist!
+    std::cout << "WARNING: a simulation of this name has already been executed. Edit output directory path before continuing to avoid overwriting data.\n\nProgramme exiting.";
+    return 0;
+  }
+
+  std::string training_data_dir = output_dir + "/Training_data";
+  const char* training_data_dir_c = training_data_dir.c_str(); //convert dir to c string - needed to be accepted by mkdir function
+  mkdir(training_data_dir_c, 0777); //make file
+
+  std::string testing_data_dir = output_dir + "/Testing_data";
+  const char* testing_data_dir_c = testing_data_dir.c_str(); //convert dir to c string - needed to be accepted by mkdir function
+  mkdir(testing_data_dir_c, 0777); //make file
+
+  //SAVE PARAMETERS
+  int n_inh_layers = n_ex_layers*inhibition;
+  std::string analysis_dir = "./Analysis";
+  std::string simulation_params_file = analysis_dir + "/simulation_params.py";
+  std::ofstream outfile (simulation_params_file);
+  outfile << "simulation_name = '" << simulation_name << "'" << std::endl;
+  outfile << "training_epochs = " << training_epochs << std::endl;
+  outfile << "display_epochs = " << display_epochs << std::endl;
+  outfile << "timestep = " << timestep << std::endl;
+  outfile << "n_ex_layers = " << n_ex_layers << std::endl;
+  outfile << "n_inh_layers = " << n_inh_layers << std::endl;
+  outfile << "n_neurons_per_layer = " << x_dim*y_dim << std::endl;
+  outfile << "simtime = " << simtime << std::endl;
+  outfile.close();
+
+
+  //////////////////////////
   // SET UP NEURON GROUPS ///
   ///////////////////////////
 
   std::cout << "\n\n.......\nSetting up neuron groups...\n.......\n\n";
 
-  //set the timestep first
+  //set the timestep and neurons first
   PolyNetwork->SetTimestep(timestep);
+  LIFSpikingNeurons* lif_spiking_neurons = new LIFSpikingNeurons(); //choose neuron type
+  PolyNetwork->spiking_neurons = lif_spiking_neurons; //assign neuron type to model
 
   // SETTING UP INPUT NEURONS
 
@@ -173,8 +272,7 @@ int main (int argc, char *argv[]){
   PatternedPoissonInputSpikingNeurons* patterned_poisson_input_neurons = new PatternedPoissonInputSpikingNeurons();
   PolyNetwork->input_spiking_neurons = patterned_poisson_input_neurons;
 
-  //create input parameter structure
-  patterned_poisson_input_spiking_neuron_parameters_struct* input_neuron_params = new patterned_poisson_input_spiking_neuron_parameters_struct();
+  //finish input parameter structure
   input_neuron_params->group_shape[0] = x_dim;    // x-dimension of the input neuron layer
   input_neuron_params->group_shape[1] = y_dim;    // y-dimension of the input neuron layer
 
@@ -188,22 +286,12 @@ int main (int argc, char *argv[]){
 
   // SETTING UP MAIN GROUPS
 
-  //choose neuron type
-  LIFSpikingNeurons* lif_spiking_neurons = new LIFSpikingNeurons();
-  PolyNetwork->spiking_neurons = lif_spiking_neurons;
+  //finish excitatory parameter structure
+  excitatory_population_params->group_shape[0] = x_dim;
+  excitatory_population_params->group_shape[1] = y_dim;
   
   //initialise vector to store layer IDs
   vector<int> ex_layer_IDs(n_ex_layers, 0);
-    
-  //create excitatory parameter structure
-  lif_spiking_neuron_parameters_struct * excitatory_population_params = new lif_spiking_neuron_parameters_struct();
-  excitatory_population_params->group_shape[0] = x_dim;
-  excitatory_population_params->group_shape[1] = y_dim;
-  excitatory_population_params->resting_potential_v0 = ex_resting_potential;
-  excitatory_population_params->absolute_refractory_period = ex_absolute_refractory_period;
-  excitatory_population_params->threshold_for_action_potential_spike = ex_threshold;
-  excitatory_population_params->somatic_capacitance_Cm = ex_somatic_capacitance;
-  excitatory_population_params->somatic_leakage_conductance_g0 = ex_somatic_leakage_conductance;
     
   //iteratively add each excitatory layer to network
   for (int i=0; i<n_ex_layers; i++){
@@ -217,14 +305,9 @@ int main (int argc, char *argv[]){
   //if there are inhbitory layers
   if (inhibition == 1){
 
-    //create inhibitory parameter structure
-    lif_spiking_neuron_parameters_struct * inhibitory_population_params = new lif_spiking_neuron_parameters_struct();
+    //finish inhibitory parameter structure
     inhibitory_population_params->group_shape[0] = x_dim;
     inhibitory_population_params->group_shape[1] = y_dim;
-    inhibitory_population_params->resting_potential_v0 = inh_resting_potential;
-    inhibitory_population_params->threshold_for_action_potential_spike = inh_threshold;
-    inhibitory_population_params->somatic_capacitance_Cm = inh_somatic_capacitance;
-    inhibitory_population_params->somatic_leakage_conductance_g0 = inh_somatic_leakage_conductance;
 
     //iteratively add each inhibitory layer to network
     for (int i=0; i<n_ex_layers; i++){
@@ -236,13 +319,13 @@ int main (int argc, char *argv[]){
 
 
  
-  /////////////////////////////////
-  // SET UP EXCITATORY SYNAPSES ///
-  /////////////////////////////////
+  //////////////////////
+  // SET UP SYNAPSES ///
+  //////////////////////
 
   std::cout << "\n\n.......\nSetting up excitatory synapses...\n.......\n\n";
 
-  //choose synapse type (nb this will be the same for inhibitory synapses too)
+  //choose synapse type
   ConductanceSpikingSynapses * conductance_spiking_synapses = new ConductanceSpikingSynapses();
   PolyNetwork->spiking_synapses = conductance_spiking_synapses;
 
@@ -255,157 +338,54 @@ int main (int argc, char *argv[]){
   CustomSTDPPlasticity * excitatory_stdp = new CustomSTDPPlasticity((SpikingSynapses *) conductance_spiking_synapses, (SpikingNeurons *) lif_spiking_neurons, (SpikingNeurons *) patterned_poisson_input_neurons, (stdp_plasticity_parameters_struct *) ex_stdp_params);  
   PolyNetwork->AddPlasticityRule(excitatory_stdp);
 
-  //initialise vectors
-  std::vector<int> pre_layer_IDs;
-  std::vector<int> post_layer_IDs;
-  std::vector<float> prob_connection;
-  std::vector<float> delay_means;
-  std::vector<float> delay_stds;
-  std::vector<int> mult_synapses;
-  std::vector<bool> learning;
+  //calculate number of neurons per layer
+  int n_neurons_per_layer = x_dim*y_dim;
   
   //input to first layer
-  pre_layer_IDs.push_back(input_layer_ID);
-  post_layer_IDs.push_back(ex_layer_IDs[0]);
-  prob_connection.push_back(prob_input_connection);
-  delay_means.push_back(ff_delay_mean);
-  delay_stds.push_back(ff_delay_std);
-  mult_synapses.push_back(ff_mult_synapses);
-  learning.push_back(input_learning);
+  int pre_layer_ID = input_layer_ID;
+  int post_layer_ID = ex_layer_IDs[0];
+  construct_connectivity(PolyNetwork, input, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep);
 
   //background to all layers
   for (int i=0; i<n_ex_layers; i++){
-    pre_layer_IDs.push_back(background_layer_ID);
-    post_layer_IDs.push_back(ex_layer_IDs[i]);
-    prob_connection.push_back(prob_background_connection);
-    delay_means.push_back(ff_delay_mean);
-    delay_stds.push_back(ff_delay_std);
-    mult_synapses.push_back(ff_mult_synapses);
-    learning.push_back(background_learning);
+    pre_layer_ID = background_layer_ID;
+    post_layer_ID = ex_layer_IDs[i];
+    construct_connectivity(PolyNetwork, background, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep);
+
   }
 
   //feed-forward
   for (int i=0; i<(n_ex_layers-1); i++){
-    pre_layer_IDs.push_back(ex_layer_IDs[i]);
-    post_layer_IDs.push_back(ex_layer_IDs[(i+1)]);
-    prob_connection.push_back(prob_ff_connection);
-    delay_means.push_back(ff_delay_mean);
-    delay_stds.push_back(ff_delay_std);
-    mult_synapses.push_back(ff_mult_synapses);
-    learning.push_back(ff_learning);
+    pre_layer_ID = ex_layer_IDs[i];
+    post_layer_ID = ex_layer_IDs[(i+1)];
+    construct_connectivity(PolyNetwork, ff, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep);
   }
 
   //feed-back
   for (int i=0; i<(n_ex_layers-1); i++){
-    pre_layer_IDs.push_back(ex_layer_IDs[i+1]);
-    post_layer_IDs.push_back(ex_layer_IDs[i]);
-    prob_connection.push_back(prob_fb_connection);
-    delay_means.push_back(fb_delay_mean);
-    delay_stds.push_back(fb_delay_std);
-    mult_synapses.push_back(fb_mult_synapses);
-    learning.push_back(fb_learning);
+    pre_layer_ID = ex_layer_IDs[i+1];
+    post_layer_ID = ex_layer_IDs[i];
+    construct_connectivity(PolyNetwork, fb, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep);
   }
 
   //lateral - excitatory to excitatory
   for (int i=0; i<n_ex_layers; i++){
-    pre_layer_IDs.push_back(ex_layer_IDs[i]);
-    post_layer_IDs.push_back(ex_layer_IDs[i]);
-    prob_connection.push_back(prob_lat_connection);
-    delay_means.push_back(lat_delay_mean);
-    delay_stds.push_back(lat_delay_std);
-    mult_synapses.push_back(lat_mult_synapses);
-    learning.push_back(lat_learning);
+    pre_layer_ID = ex_layer_IDs[i];
+    post_layer_ID = ex_layer_IDs[i];
+    construct_connectivity(PolyNetwork, lat, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep);
   }
 
-  //lateral - excitatory to inhibitory
-  if (inhibition == 1){
-    for (int i=0; i<n_ex_layers; i++){
-      pre_layer_IDs.push_back(ex_layer_IDs[i]);
-      post_layer_IDs.push_back(inh_layer_IDs[i]);
-      prob_connection.push_back(prob_ex_to_inh_connection);
-      delay_means.push_back(lat_delay_mean);
-      delay_stds.push_back(lat_delay_std);
-      mult_synapses.push_back(lat_mult_synapses);
-      learning.push_back(ex_to_inh_learning);
-    }
-  }
   
-  //prepare random number generator
-  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-  std::default_random_engine generator(seed);
-  int maximum_value_rand = generator.max();
-
-  //prepare weight distribution
-  std::uniform_real_distribution<double> weight_distribution(ex_weight_min, ex_weight_max);
-
-  //calculate relevant sizes
-  int n_neurons_per_layer = x_dim*y_dim;
-  int n_synapse_groups = pre_layer_IDs.size();
-
-  //create synapses
-  for (int i = 0; i < n_synapse_groups; i++){ //cycle through synapse groups
-
-    //choose connections
-    for (int j = 0; j < n_neurons_per_layer; j++){ //cycle through pre-synaptic neuron IDs (NB: for the purpose of adding synapses, neurons indexed seperately for each layer, from 0)
-      for (int k = 0; k < n_neurons_per_layer; k++){ //cycle through post-synaptic neuron IDs
-        int r=generator(); //pick a random number between 0 and generator.max
-        if (r < maximum_value_rand*prob_connection[i]){
-          if (pre_layer_IDs[i] != post_layer_IDs[i] || j != k){ //make sure not to connect a neuron to itself
-          	for (int l = 0; l < mult_synapses[i]; l++){ //iterate through each synapse for this neuron pair
-						  ex_synapse_params_vec->pairwise_connect_presynaptic.push_back(j);
-            	ex_synapse_params_vec->pairwise_connect_postsynaptic.push_back(k);
-          	}
-          }
-        }
-      }
-    }
-
-    //calculate number of synapses
-    int n_synapses = ex_synapse_params_vec->pairwise_connect_presynaptic.size();
-
-    //randomise delays
-    float lognorm_mu = log(delay_means[i]) - 0.5*log(delay_stds[i]/pow(delay_means[i], 2) +1);
-    float lognorm_std = sqrt(log(delay_stds[i])/pow(delay_means[i], 2) +1);
-    std::lognormal_distribution<double> delay_distribution(lognorm_mu, lognorm_std);
-    for (int j = 0; j <n_synapses; j++){
-      ex_synapse_params_vec->pairwise_connect_delay.push_back(delay_distribution(generator)/1000 + timestep); //distribution is in seconds, so must be scaled to ms. a small value added to prevent floating point errors in spike
-    }
-
-    //randomise weights
-    for (int j = 0; j <n_synapses; j++){
-      ex_synapse_params_vec->pairwise_connect_weight.push_back(weight_distribution(generator));
-    }
-
-    //print sanity check
-    std::cout << "Layer ID " << std::to_string(pre_layer_IDs[i]) << " is sending " << std::to_string(n_synapses) << " synapses to layer ID " << std::to_string(post_layer_IDs[i]) << "\n";
-
-    //turn on learning if it ought to be
-    if (learning[i]){
-      ex_synapse_params_vec->plasticity_vec.push_back(excitatory_stdp);
-      std::cout << "Learning on\n";
-    } else {
-      std::cout << "Learning off\n";
-    }
-
-
-    //add synapse group
-    PolyNetwork->AddSynapseGroup(pre_layer_IDs[i], post_layer_IDs[i], ex_synapse_params_vec);
-
-    //clear vectors
-    ex_synapse_params_vec->pairwise_connect_presynaptic.clear();
-    ex_synapse_params_vec->pairwise_connect_postsynaptic.clear();
-    ex_synapse_params_vec->pairwise_connect_weight.clear();
-    ex_synapse_params_vec->pairwise_connect_delay.clear();
-    ex_synapse_params_vec->plasticity_vec.clear();
-  }
-  
-
-  /////////////////////////////////
-  // SET UP INHIBITORY SYNAPSES ///
-  /////////////////////////////////
-
   if (inhibition == 1){ //if there is inhibition
 
+    //lateral - excitatory to inhibitory
+    for (int i=0; i<n_ex_layers; i++){
+      pre_layer_ID = ex_layer_IDs[i];
+      post_layer_ID = inh_layer_IDs[i];
+      construct_connectivity(PolyNetwork, ex_to_inh, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep);
+    }
+    
+    //lateral - inhibitory to excitatory
     std::cout << "\n\n.......\nSetting up inhibitory synapses...\n.......\n\n";
 
     //finish inhibitory parameter structure
@@ -413,68 +393,15 @@ int main (int argc, char *argv[]){
     inh_synapse_params_vec->delay_range[1] = 10.0*timestep; //NB that as the delays will be set later, these values are arbitrary, albeit required by Spike
     inh_synapse_params_vec->connectivity_type = CONNECTIVITY_TYPE_PAIRWISE;
 
-    //prepare delay distribution
-    float lognorm_mu = log(inh_delay_mean) - 0.5*log(inh_delay_std/pow(inh_delay_mean, 2) +1);
-    float lognorm_std = sqrt(log(inh_delay_std)/pow(inh_delay_mean, 2) +1);
-    std::lognormal_distribution<double> delay_distribution(lognorm_mu, lognorm_std);
-
-    //prepare weight distribution
-    std::uniform_real_distribution<double> inh_weight_distribution(inh_weight_min, inh_weight_max);
-
-    //assign plasticity rule
+    //add plasticity rule
     CustomSTDPPlasticity * inhibitory_stdp = new CustomSTDPPlasticity((SpikingSynapses *) conductance_spiking_synapses, (SpikingNeurons *) lif_spiking_neurons, (SpikingNeurons *) patterned_poisson_input_neurons, (stdp_plasticity_parameters_struct *) inh_stdp_params);  
     PolyNetwork->AddPlasticityRule(inhibitory_stdp);
-
-    for (int i = 0; i < n_ex_layers; i++){
-
-      //choose connections
-      for (int j = 0; j < n_neurons_per_layer; j++){ //cycle through pre-synaptic neuron IDs (NB: for the purpose of adding synapses, neurons indexed seperately for each layer, from 0)
-        for (int k = 0; k < n_neurons_per_layer; k++){ //cycle through post-synaptic neuron IDs
-          int r = rand(); //pick a random number between 0 and rd.max
-          if (r < RAND_MAX*prob_connection[i]){
-            for (int l = 0; l < inh_mult_synapses; l++){ //iterate through each synapse for this neuron pair
-              inh_synapse_params_vec->pairwise_connect_presynaptic.push_back(j);
-              inh_synapse_params_vec->pairwise_connect_postsynaptic.push_back(k);
-            }
-          }
-        }
-      }
     
-      //calculate number of synapses
-      int n_synapses = inh_synapse_params_vec->pairwise_connect_presynaptic.size();
-
-      //randomise delays
-      for (int j = 0; j <n_synapses; j++){
-        inh_synapse_params_vec->pairwise_connect_delay.push_back(delay_distribution(generator)/1000 + timestep); //distribution is in seconds, so must be scaled to ms. a small value added to prevent floating point errors in spike
-      }
-
-      //randomise weights
-      for (int j = 0; j <n_synapses; j++){
-        inh_synapse_params_vec->pairwise_connect_weight.push_back(inh_weight_distribution(generator));
-      }
-
-      //print sanity check
-      std::cout << "Layer ID " << std::to_string(inh_layer_IDs[i]) << " is sending " << std::to_string(n_synapses) << " synapses to layer ID " << std::to_string(ex_layer_IDs[i]) << "\n";
-
-      //turn on learning if it ought to be
-      if (inh_learning){
-        inh_synapse_params_vec->plasticity_vec.push_back(inhibitory_stdp);
-        std::cout << "Learning on\n";
-      } else {
-        std::cout << "Learning off\n";
-      }
-
-      //add synapse group
-      PolyNetwork->AddSynapseGroup(inh_layer_IDs[i], ex_layer_IDs[i], inh_synapse_params_vec);
-
-      //clear vectors
-      inh_synapse_params_vec->pairwise_connect_presynaptic.clear();
-      inh_synapse_params_vec->pairwise_connect_postsynaptic.clear();
-      inh_synapse_params_vec->pairwise_connect_weight.clear();
-      inh_synapse_params_vec->pairwise_connect_delay.clear();
-
+    for (int i=0; i<n_ex_layers; i++){
+      pre_layer_ID = inh_layer_IDs[i];
+      post_layer_ID = ex_layer_IDs[i];
+      construct_connectivity(PolyNetwork, inh_to_ex, pre_layer_ID, post_layer_ID, inh_synapse_params_vec, inhibitory_stdp, inh_weight_min, inh_weight_max, n_neurons_per_layer, timestep);
     }
-
   }
  
 
@@ -536,21 +463,20 @@ int main (int argc, char *argv[]){
 
   std::cout << "\n\n.......\nModel finalised and ready for simulating...\n.......\n\n";
 
-  
 
   ////////////////////////
   // RUN WITH TRAINING ///
   ////////////////////////
-  
-  PolyNetwork->spiking_synapses->save_weights_as_txt("./Outputs/", "Initial_");
+
+  PolyNetwork->spiking_synapses->save_weights_as_txt(output_dir, "Initial_");
 
   // Loop through a certain number of epoch's of presentation
   for (int ii = 0; ii < training_epochs; ++ii) {
     patterned_poisson_input_neurons->select_stimulus(stimulus);
     PolyNetwork->run(simtime, 1); //the second argument is a boolean determining if STDP is on or off
-    PolyNetwork->spiking_synapses->save_weights_as_txt("./Outputs/", "Epoch_" + std::to_string(ii) + "_");
-    spike_monitor_main->save_spikes_as_binary("./Outputs/", "Epoch_" + std::to_string(ii) + "_Output_Training_");
-    spike_monitor_input->save_spikes_as_binary("./Outputs/", "Epoch_" + std::to_string(ii) + "_Input_Training_");
+    PolyNetwork->spiking_synapses->save_weights_as_txt(training_data_dir, "Epoch_" + std::to_string(ii) + "_");
+    spike_monitor_main->save_spikes_as_binary(training_data_dir, "Epoch_" + std::to_string(ii) + "_Output_");
+    spike_monitor_input->save_spikes_as_binary(training_data_dir, "Epoch_" + std::to_string(ii) + "_Input_");
     spike_monitor_main->reset_state(); //Dumps all recorded spikes
     spike_monitor_input->reset_state(); //Dumps all recorded spikes
     PolyNetwork->reset_time(); //Resets the internal clock to 0
@@ -567,8 +493,8 @@ int main (int argc, char *argv[]){
 
     patterned_poisson_input_neurons->select_stimulus(stimulus);
     PolyNetwork->run(simtime, 0); //the second argument is a boolean determining if STDP is on or off
-    spike_monitor_main->save_spikes_as_binary("./Outputs/", "Epoch_" + std::to_string(ii) +  "_Output_Testing_");
-    spike_monitor_input->save_spikes_as_binary("./Outputs/", "Epoch_" + std::to_string(ii) +  "_Input_Testing_");
+    spike_monitor_main->save_spikes_as_binary(testing_data_dir, "Epoch_" + std::to_string(ii) +  "_Output_");
+    spike_monitor_input->save_spikes_as_binary(testing_data_dir, "Epoch_" + std::to_string(ii) +  "_Input_");
     spike_monitor_main->reset_state(); //Dumps all recorded spikes
     spike_monitor_input->reset_state(); //Dumps all recorded spikes
     PolyNetwork->reset_time(); //Resets the internal clock to 0
@@ -576,6 +502,85 @@ int main (int argc, char *argv[]){
   }
 
 
+
+
+ std::cout << "\n\n.......\nFinished Simulation\n.......\n\n";
+
+
+
  
   return 0;
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//FUNCTION TO CONSTRUCT CONNECTIVITY
+
+void construct_connectivity(SpikingModel* model, connectivity_struct connectivity, int pre_layer_ID, int post_layer_ID, conductance_spiking_synapse_parameters_struct* synapse_params, CustomSTDPPlasticity * stdp, float weight_min, float weight_max, int n_neurons_per_layer, float timestep)
+{
+
+  //prepare random number generator
+  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+  std::default_random_engine generator(seed);
+  int maximum_value_rand = generator.max();
+
+  //prepare weight distribution
+  std::uniform_real_distribution<double> weight_distribution(weight_min, weight_max);
+
+  //choose connections
+  for (int j = 0; j < n_neurons_per_layer; j++){ //cycle through pre-synaptic neuron IDs (NB: for the purpose of adding synapses, neurons indexed seperately for each layer, from 0)
+    for (int k = 0; k < n_neurons_per_layer; k++){ //cycle through post-synaptic neuron IDs
+      int r=generator(); //pick a random number between 0 and generator.max
+      if (r < maximum_value_rand*connectivity.prob_connection){
+        if (pre_layer_ID != post_layer_ID || j != k){ //make sure not to connect a neuron to itself
+          for (int l = 0; l < connectivity.mult_synapses; l++){ //iterate through each synapse for this neuron pair
+            synapse_params->pairwise_connect_presynaptic.push_back(j);
+            synapse_params->pairwise_connect_postsynaptic.push_back(k);
+          }
+        }
+      }
+    }
+  }
+
+  //calculate number of synapses
+  int n_synapses = synapse_params->pairwise_connect_presynaptic.size();
+
+  //randomise delays
+  float lognorm_mu = log(connectivity.delay_mean) - 0.5*log(connectivity.delay_std/pow(connectivity.delay_mean, 2) +1);
+  float lognorm_std = sqrt(log(connectivity.delay_std)/pow(connectivity.delay_mean, 2) +1);
+  std::lognormal_distribution<double> delay_distribution(lognorm_mu, lognorm_std);
+  for (int j = 0; j <n_synapses; j++){
+    synapse_params->pairwise_connect_delay.push_back(delay_distribution(generator)/1000 + timestep); //distribution is in seconds, so must be scaled to ms. a small value added to prevent floating point errors in spike
+  }
+
+  //randomise weights
+  for (int j = 0; j <n_synapses; j++){
+    synapse_params->pairwise_connect_weight.push_back(weight_distribution(generator));
+  }
+
+  //print sanity check
+  std::cout << "Layer ID " << std::to_string(pre_layer_ID) << " is sending " << std::to_string(n_synapses) << " synapses to layer ID " << std::to_string(post_layer_ID) << "\n";
+
+  //turn on learning if it ought to be
+  if (connectivity.learning){
+    synapse_params->plasticity_vec.push_back(stdp);
+    std::cout << "Learning on\n";
+  } else {
+    std::cout << "Learning off\n";
+  }
+
+
+  //add synapse group
+  model->AddSynapseGroup(pre_layer_ID, post_layer_ID, synapse_params);
+
+  //clear vectors
+  synapse_params->pairwise_connect_presynaptic.clear();
+  synapse_params->pairwise_connect_postsynaptic.clear();
+  synapse_params->pairwise_connect_weight.clear();
+  synapse_params->pairwise_connect_delay.clear();
+  synapse_params->plasticity_vec.clear();
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+

@@ -10,7 +10,8 @@ def create_shell_script_and_sbatch(shell_file_name, command_for_shell_file, depe
 	if (dependency_job_id > -1):
 		dependency_string = "--depend=afterany:" + str(dependency_job_id)
 
-	command_prefix = "sbatch --gres=gpu:1 "
+	#command_prefix = "sbatch --gres=gpu:1 "
+	command_prefix = "sbatch --gres=gpu:smith:1 "
 	print command_prefix + dependency_string + " ./" + shell_file_name
 	status, job_id = commands.getstatusoutput(command_prefix + dependency_string + " ./" + shell_file_name)
 	print status, job_id
