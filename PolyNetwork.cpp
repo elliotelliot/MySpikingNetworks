@@ -18,6 +18,7 @@
 // DESCRIPTION ///
 //////////////////
 
+
 PolyNetwork is adapted from Niels' BinaryNetwork, but with a single stream. It is set up as follows:
   
   Architecture:

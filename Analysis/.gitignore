@@ -1,5 +1,0 @@
-#ignore the following directories
-Figures
-
-#ignore files starting with the following
-simulation_params*

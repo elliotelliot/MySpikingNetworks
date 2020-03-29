@@ -4,6 +4,8 @@
 
 #ignore the following directories
 CMakeFiles
+Figures
+Outputs
 
 #ignore the following files
 cmake_install.cmake
@@ -15,6 +17,7 @@ OP_0
 #ignore files starting with
 slurm-*
 =======
+simulation_params*
 
 #ignore files starting with the following
 slurm*
