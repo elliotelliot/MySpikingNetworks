@@ -18,7 +18,6 @@
 // DESCRIPTION ///
 //////////////////
 
-
 PolyNetwork is adapted from Niels' BinaryNetwork, but with a single stream. It is set up as follows:
   
   Architecture:
@@ -73,10 +72,11 @@ struct connectivity_struct {
     float delay_std;
     float prob_connection;
     bool learning;
+    vector<int> synapses_IDs;
   } input, background, ff, fb, lat, ex_to_inh, inh_to_ex;
 
 //DECLARE FUNCTION TO CONSTRUCT CONNECTIVITY
-void construct_connectivity(SpikingModel* model, connectivity_struct connectivity, int pre_layer_ID, int post_layer_ID, conductance_spiking_synapse_parameters_struct* synapse_params, CustomSTDPPlasticity* stdp, float weight_min, float weight_max, int n_neurons_per_layer, float timestep);
+int construct_connectivity(SpikingModel* model, connectivity_struct connectivity, int pre_layer_ID, int post_layer_ID, conductance_spiking_synapse_parameters_struct* synapse_params, CustomSTDPPlasticity* stdp, float weight_min, float weight_max, int n_neurons_per_layer, float timestep);
 
 
 //MAIN FUNCTION
@@ -240,6 +240,10 @@ int main (int argc, char *argv[]){
   const char* testing_data_dir_c = testing_data_dir.c_str(); //convert dir to c string - needed to be accepted by mkdir function
   mkdir(testing_data_dir_c, 0777); //make file
 
+  td::string weight_evolution_dir = output_dir + "/Weight_evolution";
+  const char* weight_evolution_dir_c = weight_evolution_dir.c_str(); //convert dir to c string - needed to be accepted by mkdir function
+  mkdir(weight_evolution_dir_c, 0777); //make file
+
   //SAVE PARAMETERS
   int n_inh_layers = n_ex_layers*inhibition;
   std::string analysis_dir = "./Analysis";
@@ -341,39 +345,64 @@ int main (int argc, char *argv[]){
 
   //calculate number of neurons per layer
   int n_neurons_per_layer = x_dim*y_dim;
+
+  //initialise vector which contains list of synapse group IDs for which weights will be saved during training
+  //only saving weights for synapse groups where learning is on
+  vector<int> weights_to_save;
+  vector<std::string> group_names;
   
   //input to first layer
   int pre_layer_ID = input_layer_ID;
   int post_layer_ID = ex_layer_IDs[0];
-  construct_connectivity(PolyNetwork, input, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep);
+  input.synapses_IDs.push_back(construct_connectivity(PolyNetwork, input, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep));
+  if (input.learning){
+    weights_to_save.push_back(input.synapses_IDs[0]);
+    group_names.push_back("Input");
+  }
 
-  //background to all layers
+  //background to all excitatory layers
   for (int i=0; i<n_ex_layers; i++){
     pre_layer_ID = background_layer_ID;
     post_layer_ID = ex_layer_IDs[i];
-    construct_connectivity(PolyNetwork, background, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep);
-
+    background.synapses_IDs.push_back(construct_connectivity(PolyNetwork, background, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep));
+    if (background.learning){
+      weights_to_save.push_back(background.synapses_IDs[i]);
+      group_names.push_back("Background_" + std::to_string(i));
+    }
   }
+  
 
   //feed-forward
   for (int i=0; i<(n_ex_layers-1); i++){
     pre_layer_ID = ex_layer_IDs[i];
     post_layer_ID = ex_layer_IDs[(i+1)];
-    construct_connectivity(PolyNetwork, ff, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep);
+    ff.synapses_IDs.push_back(construct_connectivity(PolyNetwork, ff, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep));
+    if (ff.learning){
+      weights_to_save.push_back(ff.synapses_IDs[i]);
+      group_names.push_back("Feed-forward_" + std::to_string(i));
+    }
   }
 
   //feed-back
   for (int i=0; i<(n_ex_layers-1); i++){
     pre_layer_ID = ex_layer_IDs[i+1];
     post_layer_ID = ex_layer_IDs[i];
-    construct_connectivity(PolyNetwork, fb, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep);
+    fb.synapses_IDs.push_back(construct_connectivity(PolyNetwork, fb, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep));
+    if (fb.learning){
+      weights_to_save.push_back(fb.synapses_IDs[i]);
+      group_names.push_back("Feed-back_" + std::to_string(i));
+    }
   }
 
   //lateral - excitatory to excitatory
   for (int i=0; i<n_ex_layers; i++){
     pre_layer_ID = ex_layer_IDs[i];
     post_layer_ID = ex_layer_IDs[i];
-    construct_connectivity(PolyNetwork, lat, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep);
+    lat.synapses_IDs.push_back(construct_connectivity(PolyNetwork, lat, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep));
+    if (lat.learning){
+      weights_to_save.push_back(lat.synapses_IDs[i]);
+      group_names.push_back("Lateral_" + std::to_string(i));
+    }
   }
 
   
@@ -383,7 +412,11 @@ int main (int argc, char *argv[]){
     for (int i=0; i<n_ex_layers; i++){
       pre_layer_ID = ex_layer_IDs[i];
       post_layer_ID = inh_layer_IDs[i];
-      construct_connectivity(PolyNetwork, ex_to_inh, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep);
+      ex_to_inh.synapses_IDs.push_back(construct_connectivity(PolyNetwork, ex_to_inh, pre_layer_ID, post_layer_ID, ex_synapse_params_vec, excitatory_stdp, ex_weight_min, ex_weight_max, n_neurons_per_layer, timestep));
+      if (ex_to_inh.learning){
+        weights_to_save.push_back(ex_to_inh.synapses_IDs[i]);
+        group_names.push_back("Ex-to-inh_" + std::to_string(i));
+      }
     }
     
     //lateral - inhibitory to excitatory
@@ -401,9 +434,16 @@ int main (int argc, char *argv[]){
     for (int i=0; i<n_ex_layers; i++){
       pre_layer_ID = inh_layer_IDs[i];
       post_layer_ID = ex_layer_IDs[i];
-      construct_connectivity(PolyNetwork, inh_to_ex, pre_layer_ID, post_layer_ID, inh_synapse_params_vec, inhibitory_stdp, inh_weight_min, inh_weight_max, n_neurons_per_layer, timestep);
+      inh_to_ex.synapses_IDs.push_back(construct_connectivity(PolyNetwork, inh_to_ex, pre_layer_ID, post_layer_ID, inh_synapse_params_vec, inhibitory_stdp, inh_weight_min, inh_weight_max, n_neurons_per_layer, timestep));
+      if (inh_to_ex.learning){
+        weights_to_save.push_back(inh_to_ex.synapses_IDs[i]);
+        group_names.push_back("Inh-to-ex_" + std::to_string(i));
+      } 
     }
   }
+
+  //prepare to save weights group by group
+  int n_weight_groups_to_save = weights_to_save.size();
  
 
   ////////////////////////
@@ -469,19 +509,29 @@ int main (int argc, char *argv[]){
   // RUN WITH TRAINING ///
   ////////////////////////
 
-  PolyNetwork->spiking_synapses->save_weights_as_txt(output_dir, "Initial_");
+  PolyNetwork->spiking_synapses->save_weights_as_binary(output_dir, "Initial_");
+
+  for (int jj = 0; jj < n_weight_groups_to_save; ++jj){
+      PolyNetwork->spiking_synapses->save_weights_as_binary(weight_evolution_dir, "Initial_" + group_names[jj] + "_", weights_to_save[jj]);
+    }
 
   // Loop through a certain number of epoch's of presentation
   for (int ii = 0; ii < training_epochs; ++ii) {
     patterned_poisson_input_neurons->select_stimulus(stimulus);
     PolyNetwork->run(simtime, 1); //the second argument is a boolean determining if STDP is on or off
-    PolyNetwork->spiking_synapses->save_weights_as_txt(training_data_dir, "Epoch_" + std::to_string(ii) + "_");
+
+    for (int jj = 0; jj < n_weight_groups_to_save; ++jj){
+      PolyNetwork->spiking_synapses->save_weights_as_binary(weight_evolution_dir, "Epoch_" + std::to_string(ii) + "_" + group_names[jj] + "_", weights_to_save[jj]);
+    }
+
     spike_monitor_main->save_spikes_as_binary(training_data_dir, "Epoch_" + std::to_string(ii) + "_Output_");
     spike_monitor_input->save_spikes_as_binary(training_data_dir, "Epoch_" + std::to_string(ii) + "_Input_");
     spike_monitor_main->reset_state(); //Dumps all recorded spikes
     spike_monitor_input->reset_state(); //Dumps all recorded spikes
     PolyNetwork->reset_time(); //Resets the internal clock to 0
   }
+
+  PolyNetwork->spiking_synapses->save_weights_as_binary(output_dir, "Final_");
 
   
 
@@ -517,7 +567,7 @@ int main (int argc, char *argv[]){
 
 //FUNCTION TO CONSTRUCT CONNECTIVITY
 
-void construct_connectivity(SpikingModel* model, connectivity_struct connectivity, int pre_layer_ID, int post_layer_ID, conductance_spiking_synapse_parameters_struct* synapse_params, CustomSTDPPlasticity * stdp, float weight_min, float weight_max, int n_neurons_per_layer, float timestep)
+int construct_connectivity(SpikingModel* model, connectivity_struct connectivity, int pre_layer_ID, int post_layer_ID, conductance_spiking_synapse_parameters_struct* synapse_params, CustomSTDPPlasticity * stdp, float weight_min, float weight_max, int n_neurons_per_layer, float timestep)
 {
 
   //prepare random number generator
@@ -572,7 +622,7 @@ void construct_connectivity(SpikingModel* model, connectivity_struct connectivit
 
 
   //add synapse group
-  model->AddSynapseGroup(pre_layer_ID, post_layer_ID, synapse_params);
+  int synapse_group_ID = model->AddSynapseGroup(pre_layer_ID, post_layer_ID, synapse_params);
 
   //clear vectors
   synapse_params->pairwise_connect_presynaptic.clear();
@@ -580,6 +630,8 @@ void construct_connectivity(SpikingModel* model, connectivity_struct connectivit
   synapse_params->pairwise_connect_weight.clear();
   synapse_params->pairwise_connect_delay.clear();
   synapse_params->plasticity_vec.clear();
+
+  return synapse_group_ID;
 
 }
 
