@@ -240,7 +240,7 @@ int main (int argc, char *argv[]){
   const char* testing_data_dir_c = testing_data_dir.c_str(); //convert dir to c string - needed to be accepted by mkdir function
   mkdir(testing_data_dir_c, 0777); //make file
 
-  td::string weight_evolution_dir = output_dir + "/Weight_evolution";
+  std::string weight_evolution_dir = output_dir + "/Weight_evolution";
   const char* weight_evolution_dir_c = weight_evolution_dir.c_str(); //convert dir to c string - needed to be accepted by mkdir function
   mkdir(weight_evolution_dir_c, 0777); //make file
 
