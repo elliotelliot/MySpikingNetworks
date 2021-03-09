@@ -1,1 +1,2 @@
-Write code to test for convergence
+Fix code for firing rate histogram generation so it can do it for certain layers
+Check through parameters used, and think about what might be preventing weight convergence
